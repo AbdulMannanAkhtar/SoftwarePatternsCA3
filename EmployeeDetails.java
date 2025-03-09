@@ -51,6 +51,7 @@ import net.miginfocom.swing.MigLayout;
 
 public class EmployeeDetails extends JFrame implements ActionListener, ItemListener, DocumentListener, WindowListener {
 	private FileManager fileManager;
+	private Navigation navigation;
 	// decimal format for inactive currency text field
 	private static final DecimalFormat format = new DecimalFormat("\u20ac ###,###,##0.00");
 	// decimal format for active currency text field
@@ -91,6 +92,8 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 	{
 		fileManager = new FileManager(application);
 		fileManager.createRandomFile();
+		this.file = fileManager.getFile();
+		this.navigation = new Navigation(application, file);
 		
 	}
 
@@ -363,81 +366,7 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 			new SearchBySurnameDialog(EmployeeDetails.this);
 	}// end displaySearchBySurnameDialog
 
-	// find byte start in file for first active record
-	private void firstRecord() {
-		// if any active record in file look for first record
-		if (isSomeoneToDisplay()) {
-			// open file for reading
-			application.openReadFile(file.getAbsolutePath());
-			// get byte start in file for first record
-			currentByteStart = application.getFirst();
-			// assign current Employee to first record in file
-			currentEmployee = application.readRecords(currentByteStart);
-			application.closeReadFile();// close file for reading
-			// if first record is inactive look for next record
-			if (currentEmployee.getEmployeeId() == 0)
-				nextRecord();// look for next record
-		} // end if
-	}// end firstRecord
-
-	// find byte start in file for previous active record
-	private void previousRecord() {
-		// if any active record in file look for first record
-		if (isSomeoneToDisplay()) {
-			// open file for reading
-			application.openReadFile(file.getAbsolutePath());
-			// get byte start in file for previous record
-			currentByteStart = application.getPrevious(currentByteStart);
-			// assign current Employee to previous record in file
-			currentEmployee = application.readRecords(currentByteStart);
-			// loop to previous record until Employee is active - ID is not 0
-			while (currentEmployee.getEmployeeId() == 0) {
-				// get byte start in file for previous record
-				currentByteStart = application.getPrevious(currentByteStart);
-				// assign current Employee to previous record in file
-				currentEmployee = application.readRecords(currentByteStart);
-			} // end while
-			application.closeReadFile();// close file for reading
-		}
-	}// end previousRecord
-
-	// find byte start in file for next active record
-	private void nextRecord() {
-		// if any active record in file look for first record
-		if (isSomeoneToDisplay()) {
-			// open file for reading
-			application.openReadFile(file.getAbsolutePath());
-			// get byte start in file for next record
-			currentByteStart = application.getNext(currentByteStart);
-			// assign current Employee to record in file
-			currentEmployee = application.readRecords(currentByteStart);
-			// loop to previous next until Employee is active - ID is not 0
-			while (currentEmployee.getEmployeeId() == 0) {
-				// get byte start in file for next record
-				currentByteStart = application.getNext(currentByteStart);
-				// assign current Employee to next record in file
-				currentEmployee = application.readRecords(currentByteStart);
-			} // end while
-			application.closeReadFile();// close file for reading
-		} // end if
-	}// end nextRecord
-
-	// find byte start in file for last active record
-	private void lastRecord() {
-		// if any active record in file look for first record
-		if (isSomeoneToDisplay()) {
-			// open file for reading
-			application.openReadFile(file.getAbsolutePath());
-			// get byte start in file for last record
-			currentByteStart = application.getLast();
-			// assign current Employee to first record in file
-			currentEmployee = application.readRecords(currentByteStart);
-			application.closeReadFile();// close file for reading
-			// if last record is inactive look for previous record
-			if (currentEmployee.getEmployeeId() == 0)
-				previousRecord();// look for previous record
-		} // end if
-	}// end lastRecord
+	//
 
 	// search Employee by ID
 	public void searchEmployeeById() {
@@ -446,7 +375,7 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 		try {// try to read correct correct from input
 				// if any active Employee record search for ID else do nothing
 			if (isSomeoneToDisplay()) {
-				firstRecord();// look for first record
+				currentEmployee = navigation.firstRecord();// look for first record
 				int firstId = currentEmployee.getEmployeeId();
 				// if ID to search is already displayed do nothing else loop
 				// through records
@@ -457,7 +386,7 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 					displayRecords(currentEmployee);
 				} // end else if
 				else {
-					nextRecord();// look for next record
+					currentEmployee = navigation.nextRecord();// look for next record
 					// loop until Employee found or until all Employees have
 					// been checked
 					while (firstId != currentEmployee.getEmployeeId()) {
@@ -468,7 +397,7 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 							displayRecords(currentEmployee);
 							break;
 						} else
-							nextRecord();// look for next record
+							currentEmployee = navigation.nextRecord();// look for next record
 					} // end while
 				} // end else
 					// if Employee not found display message
@@ -489,7 +418,7 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 		boolean found = false;
 		// if any active Employee record search for ID else do nothing
 		if (isSomeoneToDisplay()) {
-			firstRecord();// look for first record
+			currentEmployee = navigation.firstRecord();// look for first record
 			String firstSurname = currentEmployee.getSurname().trim();
 			// if ID to search is already displayed do nothing else loop through
 			// records
@@ -500,7 +429,7 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 				displayRecords(currentEmployee);
 			} // end else if
 			else {
-				nextRecord();// look for next record
+				currentEmployee = navigation.nextRecord();// look for next record
 				// loop until Employee found or until all Employees have been
 				// checked
 				while (!firstSurname.trim().equalsIgnoreCase(currentEmployee.getSurname().trim())) {
@@ -512,7 +441,7 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 						break;
 					} // end if
 					else
-						nextRecord();// look for next record
+						currentEmployee = navigation.nextRecord();// look for next record
 				} // end while
 			} // end else
 				// if Employee not found display message
@@ -530,7 +459,7 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 		if (file == null || file.length() == 0 || !isSomeoneToDisplay())
 			nextFreeId++;
 		else {
-			lastRecord();// look for last active record
+			currentEmployee = navigation.lastRecord();// look for last active record
 			// add 1 to last active records ID to get next ID
 			nextFreeId = currentEmployee.getEmployeeId() + 1;
 		}
@@ -554,6 +483,10 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 
 	// add Employee object to fail
 	public void addRecord(Employee newEmployee) {
+		if(file == null)
+		{
+			fileManager.createRandomFile();
+		}
 		// open file for writing
 		application.openWriteFile(file.getAbsolutePath());
 		// write into a file
@@ -576,7 +509,7 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 				application.closeWriteFile();// close file for writing
 				// if any active record in file display next record
 				if (isSomeoneToDisplay()) {
-					nextRecord();// look for next record
+					currentEmployee = navigation.nextRecord();// look for next record
 					displayRecords(currentEmployee);
 				} // end if
 			} // end if
@@ -591,7 +524,7 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 		long byteStart = currentByteStart;
 		int firstId;
 
-		firstRecord();// look for first record
+		currentEmployee = navigation.firstRecord();// look for first record
 		firstId = currentEmployee.getEmployeeId();
 		// loop until all Employees are added to vector
 		do {
@@ -606,7 +539,7 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 			empDetails.addElement(new Boolean(currentEmployee.getFullTime()));
 
 			allEmployee.addElement(empDetails);
-			nextRecord();// look for next record
+			currentEmployee = navigation.nextRecord();// look for next record
 		} while (firstId != currentEmployee.getEmployeeId());// end do - while
 		currentByteStart = byteStart;
 
@@ -660,6 +593,10 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 
 	// check for correct PPS format and look if PPS already in use
 	public boolean correctPps(String pps, long currentByte) {
+		if(file == null)
+		{
+			return false;
+		}
 		boolean ppsExist = false;
 		// check for correct PPS format based on assignment description
 		if (pps.length() == 8 || pps.length() == 9) {
@@ -797,7 +734,7 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 	private void openFile() {
 		
 		fileManager.openFile(this);
-		firstRecord();
+		currentEmployee = navigation.firstRecord();
 		displayRecords(currentEmployee);
 	}// end openFile
 
@@ -915,22 +852,22 @@ public class EmployeeDetails extends JFrame implements ActionListener, ItemListe
 			cancelChange();
 		else if (e.getSource() == firstItem || e.getSource() == first) {
 			if (checkInput() && !checkForChanges()) {
-				firstRecord();
+				currentEmployee = navigation.firstRecord();
 				displayRecords(currentEmployee);
 			}
 		} else if (e.getSource() == prevItem || e.getSource() == previous) {
 			if (checkInput() && !checkForChanges()) {
-				previousRecord();
+				currentEmployee = navigation.previousRecord();
 				displayRecords(currentEmployee);
 			}
 		} else if (e.getSource() == nextItem || e.getSource() == next) {
 			if (checkInput() && !checkForChanges()) {
-				nextRecord();
+				currentEmployee = navigation.nextRecord();
 				displayRecords(currentEmployee);
 			}
 		} else if (e.getSource() == lastItem || e.getSource() == last) {
 			if (checkInput() && !checkForChanges()) {
-				lastRecord();
+				currentEmployee = navigation.lastRecord();
 				displayRecords(currentEmployee);
 			}
 		} else if (e.getSource() == listAll || e.getSource() == displayAll) {
